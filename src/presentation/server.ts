@@ -1,4 +1,5 @@
 import express, { Router } from 'express';
+import {PrismaClient} from '@prisma/client' // escuchar la conexion con postgreSQL
 import path from 'path';
 
 interface Options {
@@ -15,12 +16,14 @@ export class Server {
   private readonly port: number;
   private readonly publicPath: string;
   private readonly routes: Router;
+  private readonly prisma: PrismaClient;
 
   constructor(options: Options) {
     const { port, routes, public_path = 'public' } = options;
     this.port = port;
     this.publicPath = public_path;
     this.routes = routes;
+    this.prisma = new PrismaClient();
   }
 
   
@@ -43,16 +46,27 @@ export class Server {
       const indexPath = path.join( __dirname + `../../../${ this.publicPath }/index.html` );
       res.sendFile(indexPath);
     });
+
+
+// Insterceptar conexion de prisma con postgres
+    try {
+      await this.prisma.$connect();
+      console.log('Connected to PostgreSQL');
+      
+    } catch (error) {
+      console.error('Error connecting to server', error);
+    }
     
 
     this.serverListener = this.app.listen(this.port, () => {
-      console.log(`Server running on port ${ this.port }`);
+      console.log(`Server running on port http://localhost:${ this.port }`);
     });
 
   }
 
   public close() {
     this.serverListener?.close();
+    this.prisma.$disconnect();
   }
 
 }
